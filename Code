@@ -91,6 +91,18 @@ BEGIN
         
         v_new_id := get_next_id('spec', 'id');
         
+        IF EXISTS (
+            SELECT 1
+            FROM pg_trigger t
+            WHERE t.tgrelid = p_table_name::regclass
+              AND pg_get_triggerdef(t.oid) LIKE '%sync_spec_trigger%'
+              AND pg_get_triggerdef(t.oid) LIKE '%' || p_column_name || '%'
+        ) THEN
+            INSERT INTO spec (id, table_name, column_name, current_max_value, trigger_name)
+            VALUES (v_new_id, p_table_name, p_column_name, v_next_val, 'existing_trigger');
+            RETURN v_next_val;
+        END IF;
+        
         SELECT COUNT(*) INTO v_trigger_count
         FROM pg_trigger
         WHERE tgrelid = p_table_name::regclass AND NOT tgisinternal;
